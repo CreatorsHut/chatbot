@@ -1,0 +1,5 @@
+# Ignore the figma-mcp-main directory
+figma-mcp-main/
+
+# Ignore node_modules
+node_modules/
