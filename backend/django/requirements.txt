@@ -1,0 +1,30 @@
+# Core Django
+Django
+djangorestframework
+djangorestframework-simplejwt
+django-cors-headers
+django-filter
+
+# Database (Python 3.14 호환)
+psycopg[binary]
+
+# Environment
+python-dotenv
+
+# Async tasks
+celery
+redis
+
+# HTTP requests
+requests
+httpx
+
+# Image processing (Python 3.14 호환 최신 버전 자동 설치)
+Pillow
+
+# Production server
+gunicorn
+
+# Utilities
+python-slugify
+pytz
