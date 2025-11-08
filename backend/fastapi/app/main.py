@@ -391,7 +391,7 @@ async def generate_image(request: ImageGenerationRequest):
                 prompt=request.prompt,
                 size=request.size,
                 quality=request.quality,
-                job_id=job_id,
+                job_id=str(job_id) if job_id else None,  # Convert int to string
                 user_token=request.user_token,
                 job_timeout='10m',  # 10분 타임아웃
             )
