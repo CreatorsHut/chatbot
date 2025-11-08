@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Header
+from fastapi import FastAPI, HTTPException, Header, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 import os
@@ -8,6 +8,7 @@ import httpx
 import json
 from typing import AsyncGenerator, Optional
 from .django_client import django_client
+from .redis_client import get_redis, get_image_queue, is_redis_available
 
 # Load environment variables
 load_dotenv()
@@ -54,12 +55,31 @@ def root():
 
 @app.get("/health")
 def health():
-    return {"ok": True}
+    """헬스 체크"""
+    redis_status = "connected" if is_redis_available() else "disabled"
+    return {
+        "ok": True,
+        "redis": redis_status
+    }
 
 @app.get("/readiness")
 def readiness():
-    # Placeholder: add DB/Redis ping checks if needed
-    return {"ready": True}
+    """준비 상태 확인"""
+    redis_ready = False
+    if is_redis_available():
+        try:
+            redis_client = get_redis()
+            redis_client.ping()
+            redis_ready = True
+        except:
+            redis_ready = False
+    
+    return {
+        "ready": True,
+        "redis": redis_ready,
+        "openai": bool(OPENAI_API_KEY),
+        "django": bool(DJANGO_BASE_URL)
+    }
 
 
 # ==================== Chat Streaming (OpenAI) ====================
@@ -328,19 +348,20 @@ async def chat_stream(request: ChatStreamRequest):
 async def generate_image(request: ImageGenerationRequest):
     """
     Generate image using DALL-E 3
-
-    1. Create generation job in Django DB
-    2. Call DALL-E API
-    3. Save result to Django DB
-    4. Return image URL
-
+    
+    Redis 사용 시: 비동기 작업 큐에 추가 (권장)
+    Redis 미사용 시: 동기 처리 (시간이 오래 걸림)
+    
     Returns: {
         "job_id": int,
-        "url": "image_url",
-        "revised_prompt": "actual_prompt_used"
+        "task_id": str (Redis 사용 시),
+        "status": "queued" | "processing" | "completed",
+        "url": "image_url" (완료 시),
+        "message": "상태 메시지"
     }
     """
     job_id = None
+    image_queue = get_image_queue()
     
     try:
         # 1. Create generation job in Django (status: pending)
@@ -357,83 +378,121 @@ async def generate_image(request: ImageGenerationRequest):
             )
             if job_data:
                 job_id = job_data.get("id")
-                
-                # 즉시 processing 상태로 변경 (started_at 설정됨)
+        elif request.save_to_db:
+            print("[FastAPI] Warning: save_to_db=True but no user_token provided")
+        
+        # 2. Redis 큐 사용 여부에 따라 분기
+        if image_queue:
+            # Redis 큐에 작업 추가 (비동기)
+            from .tasks import generate_image_task
+            
+            job = image_queue.enqueue(
+                generate_image_task,
+                prompt=request.prompt,
+                size=request.size,
+                quality=request.quality,
+                job_id=job_id,
+                user_token=request.user_token,
+                job_timeout='10m',  # 10분 타임아웃
+            )
+            
+            # Job을 queued 상태로 업데이트
+            if job_id and request.save_to_db and request.user_token:
+                await django_client.update_generation_job(
+                    job_id=job_id,
+                    status="queued",
+                    user_token=request.user_token
+                )
+            
+            return {
+                "job_id": job_id,
+                "task_id": job.id,
+                "status": "queued",
+                "message": "Image generation queued. Check status with /image/status/{task_id}",
+                "check_url": f"/image/status/{job.id}",
+                "success": True
+            }
+        
+        else:
+            # Redis 없음: 동기 처리 (기존 방식)
+            print("[FastAPI] Redis not available - processing synchronously")
+            
+            # processing 상태로 변경
+            if job_id and request.save_to_db and request.user_token:
                 await django_client.update_generation_job(
                     job_id=job_id,
                     status="processing",
                     user_token=request.user_token
                 )
-        elif request.save_to_db:
-            print("[FastAPI] Warning: save_to_db=True but no user_token provided")
-        
-        # 2. Call DALL-E API
-        headers = {
-            "Authorization": f"Bearer {OPENAI_API_KEY}",
-            "Content-Type": "application/json",
-        }
+            
+            # 2. Call DALL-E API
+            headers = {
+                "Authorization": f"Bearer {OPENAI_API_KEY}",
+                "Content-Type": "application/json",
+            }
 
-        payload = {
-            "model": DALLE_MODEL,
-            "prompt": request.prompt,
-            "n": 1,
-            "size": request.size,
-            "quality": request.quality,
-        }
+            payload = {
+                "model": DALLE_MODEL,
+                "prompt": request.prompt,
+                "n": 1,
+                "size": request.size,
+                "quality": request.quality,
+            }
 
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{OPENAI_BASE_URL}/images/generations",
-                json=payload,
-                headers=headers,
-                timeout=60.0
-            )
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    f"{OPENAI_BASE_URL}/images/generations",
+                    json=payload,
+                    headers=headers,
+                    timeout=60.0
+                )
 
-            if response.status_code != 200:
-                error_data = response.json()
-                error_message = error_data.get('error', {}).get('message', 'Unknown error')
+                if response.status_code != 200:
+                    error_data = response.json()
+                    error_message = error_data.get('error', {}).get('message', 'Unknown error')
+                    
+                    # Update job status to failed
+                    if job_id and request.save_to_db and request.user_token:
+                        await django_client.update_generation_job(
+                            job_id=job_id,
+                            status="failed",
+                            error_message=error_message,
+                            user_token=request.user_token
+                        )
+                    
+                    raise HTTPException(
+                        status_code=response.status_code,
+                        detail=f"DALL-E API error: {error_message}"
+                    )
+
+                result = response.json()
+                image_url = result["data"][0]["url"]
+                revised_prompt = result["data"][0].get("revised_prompt", request.prompt)
                 
-                # Update job status to failed
+                # 3. Update job status to completed
                 if job_id and request.save_to_db and request.user_token:
                     await django_client.update_generation_job(
                         job_id=job_id,
-                        status="failed",
-                        error_message=error_message,
+                        status="completed",
+                        result_data={
+                            "url": image_url,
+                            "revised_prompt": revised_prompt,
+                            "model": DALLE_MODEL,
+                            "size": request.size,
+                            "quality": request.quality,
+                        },
                         user_token=request.user_token
                     )
                 
-                raise HTTPException(
-                    status_code=response.status_code,
-                    detail=f"DALL-E API error: {error_message}"
-                )
-
-            result = response.json()
-            image_url = result["data"][0]["url"]
-            revised_prompt = result["data"][0].get("revised_prompt", request.prompt)
-            
-            # 3. Update job status to completed
-            if job_id and request.save_to_db and request.user_token:
-                await django_client.update_generation_job(
-                    job_id=job_id,
-                    status="completed",
-                    result_data={
-                        "url": image_url,
-                        "revised_prompt": revised_prompt,
-                        "model": DALLE_MODEL,
-                        "size": request.size,
-                        "quality": request.quality,
-                    },
-                    user_token=request.user_token
-                )
-            
-            # 4. Return result
-            return {
-                "job_id": job_id,
-                "url": image_url,
-                "revised_prompt": revised_prompt,
-                "model": DALLE_MODEL,
-                "success": True
-            }
+                # 4. Return result
+                return {
+                    "job_id": job_id,
+                    "url": image_url,
+                    "revised_prompt": revised_prompt,
+                    "model": DALLE_MODEL,
+                    "success": True,
+                    "status": "completed"
+                }
 
     except HTTPException:
         raise
@@ -447,6 +506,53 @@ async def generate_image(request: ImageGenerationRequest):
                 user_token=request.user_token
             )
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/image/status/{task_id}")
+async def get_image_status(task_id: str):
+    """
+    Redis 큐에 있는 이미지 생성 작업 상태 확인
+    
+    Returns: {
+        "task_id": str,
+        "status": "queued" | "started" | "finished" | "failed",
+        "result": dict (완료 시),
+        "error": str (실패 시)
+    }
+    """
+    from rq.job import Job
+    
+    redis_client = get_redis()
+    if not redis_client:
+        raise HTTPException(
+            status_code=503,
+            detail="Redis not configured - status checking not available"
+        )
+    
+    try:
+        job = Job.fetch(task_id, connection=redis_client)
+        
+        response = {
+            "task_id": task_id,
+            "status": job.get_status(),
+            "created_at": job.created_at.isoformat() if job.created_at else None,
+            "started_at": job.started_at.isoformat() if job.started_at else None,
+            "ended_at": job.ended_at.isoformat() if job.ended_at else None,
+        }
+        
+        if job.is_finished:
+            response["result"] = job.result
+        elif job.is_failed:
+            response["error"] = str(job.exc_info) if job.exc_info else "Unknown error"
+        
+        return response
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Job not found: {str(e)}"
+        )
+
 
 if __name__ == "__main__":
     import socket

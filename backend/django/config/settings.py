@@ -265,19 +265,12 @@ SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
 SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET", "")
 
 # =============================================================================
-# REDIS SETTINGS (for Celery/RQ)
+# REDIS SETTINGS (for Celery/RQ - Django는 기본적으로 사용하지 않음)
 # =============================================================================
-REDIS_URL = os.getenv("REDIS_URL", "")
+# NOTE: Redis는 FastAPI에서 비동기 작업 큐로 사용됩니다.
+# Django는 데이터 관리용이므로 Redis가 필요하지 않습니다.
 
-# =============================================================================
-# CELERY SETTINGS
-# =============================================================================
-CELERY_BROKER_URL = REDIS_URL
-CELERY_RESULT_BACKEND = REDIS_URL
-CELERY_ACCEPT_CONTENT = ["json"]
-CELERY_TASK_SERIALIZER = "json"
-CELERY_RESULT_SERIALIZER = "json"
-CELERY_TIMEZONE = TIME_ZONE
+REDIS_URL = os.getenv("REDIS_URL", "")
 
 # =============================================================================
 # CUSTOM USER MODEL
