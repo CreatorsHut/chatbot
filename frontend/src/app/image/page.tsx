@@ -46,13 +46,32 @@ export default function ImageGenerationPage() {
     setResult(null);
 
     try {
+      console.log("\n========================================");
+      console.log("[Frontend] Starting image generation");
+      console.log("[Frontend] Prompt:", prompt);
+      console.log("[Frontend] Size:", size);
+      console.log("[Frontend] Quality:", quality);
+      console.log("[Frontend] User Token:", userToken ? "✓ Present" : "✗ Missing");
+      console.log("========================================\n");
+
       const imageResult = await generateImage(prompt, size, quality, userToken);
+
+      console.log("\n========================================");
+      console.log("[Frontend] ✅ Image generation successful!");
+      console.log("[Frontend] Result:", imageResult);
+      console.log("========================================\n");
+
       setResult(imageResult);
-      
+
       // 히스토리에 추가
       setHistory(prev => [{ ...imageResult, prompt }, ...prev].slice(0, 6)); // 최대 6개만 유지
     } catch (err: any) {
-      console.error('Image generation error:', err);
+      console.error("\n========================================");
+      console.error("[Frontend] ❌ Image generation failed!");
+      console.error("[Frontend] Error:", err);
+      console.error("[Frontend] Error Message:", err.message);
+      console.error("[Frontend] Error Stack:", err.stack);
+      console.error("========================================\n");
       setError(err.message || "이미지 생성에 실패했습니다.");
     } finally {
       setGenerating(false);

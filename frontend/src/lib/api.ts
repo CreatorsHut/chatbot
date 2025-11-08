@@ -392,6 +392,16 @@ export async function generateImage(
   userToken: string = ''
 ): Promise<ImageGenerationResult> {
   try {
+    console.log("\n[API] Calling FastAPI /image/generate endpoint");
+    console.log("[API] URL:", `${FASTAPI_URL}/image/generate`);
+    console.log("[API] Request Body:", {
+      prompt,
+      size,
+      quality,
+      user_token: userToken ? "✓ Present" : "✗ Missing",
+      save_to_db: true,
+    });
+
     const response = await fetch(`${FASTAPI_URL}/image/generate`, {
       method: 'POST',
       headers: {
@@ -406,14 +416,20 @@ export async function generateImage(
       }),
     });
 
+    console.log("[API] Response Status:", response.status);
+    console.log("[API] Response OK:", response.ok);
+
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
+      console.error("[API] ❌ Error Response:", errorData);
       throw new Error(errorData.detail || `Failed to generate image: ${response.status}`);
     }
 
-    return await response.json();
+    const data = await response.json();
+    console.log("[API] ✅ Response Data:", data);
+    return data;
   } catch (error) {
-    console.error('Error generating image:', error);
+    console.error("\n[API] ❌ Exception:", error);
     throw error;
   }
 }
