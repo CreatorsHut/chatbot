@@ -104,82 +104,26 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Railway는 자동으로 DATABASE_URL을 생성합니다
 DATABASE_URL = os.getenv("DATABASE_URL", "")
 
-# 개별 PostgreSQL 변수 (개발 환경용 - .env 파일에서 읽음)
-POSTGRES_DB = os.getenv("POSTGRES_DB", "")
-POSTGRES_USER = os.getenv("POSTGRES_USER", "")
-POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "")
-POSTGRES_HOST = os.getenv("POSTGRES_HOST", "localhost")
-POSTGRES_PORT = os.getenv("POSTGRES_PORT", "5432")
-
-# 우선순위: DATABASE_URL > 개별 변수 > SQLite
 if DATABASE_URL:
-    # DATABASE_URL 파싱
-    try:
-        import re
-        import urllib.parse
-        
-        pattern = r'postgresql://([^:]+):([^@]+)@([^:]+):(\d+)/(.+)'
-        match = re.match(pattern, DATABASE_URL)
-        
-        if match:
-            db_user, db_password, db_host, db_port, db_name = match.groups()
-            
-            # URL 디코딩 (특수문자 처리)
-            db_user = urllib.parse.unquote(db_user)
-            db_password = urllib.parse.unquote(db_password)
-            db_name = urllib.parse.unquote(db_name)
-            
-            DATABASES = {
-                "default": {
-                    "ENGINE": "django.db.backends.postgresql",
-                    "NAME": db_name,
-                    "USER": db_user,
-                    "PASSWORD": db_password,
-                    "HOST": db_host,
-                    "PORT": db_port,
-                    "OPTIONS": {
-                        "client_encoding": "UTF8",
-                    },
-                }
-            }
-            print("[Database] Using DATABASE_URL (PostgreSQL)")
-        else:
-            raise ValueError("Invalid DATABASE_URL format")
-    except Exception as e:
-        print(f"[Database] Could not parse DATABASE_URL: {e}")
-        print("[Database] Trying individual POSTGRES_* variables...")
-        DATABASE_URL = ""  # Fall through to next check
-
-if not DATABASE_URL and POSTGRES_DB and POSTGRES_USER:
-    # 개별 PostgreSQL 변수 사용
-    # Windows 환경변수 인코딩 문제 해결
-    os.environ['PGCLIENTENCODING'] = 'UTF8'
-    os.environ['PYTHONIOENCODING'] = 'utf-8'
-    
+    # Railway PostgreSQL 자동 연결
+    import dj_database_url
     DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": POSTGRES_DB,
-            "USER": POSTGRES_USER,
-            "PASSWORD": POSTGRES_PASSWORD,
-            "HOST": POSTGRES_HOST,
-            "PORT": POSTGRES_PORT,
-            "OPTIONS": {
-                "client_encoding": "UTF8",
-                "connect_timeout": 10,
-            },
-        }
+        "default": dj_database_url.config(
+            default=DATABASE_URL,
+            conn_max_age=600,
+            conn_health_checks=True,
+        )
     }
-    print(f"[Database] Using PostgreSQL: {POSTGRES_USER}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}")
-elif not DATABASE_URL:
-    # SQLite 사용
+    print("[Database] Using DATABASE_URL (PostgreSQL)")
+else:
+    # 개발 환경: SQLite 사용
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
             "NAME": BASE_DIR / "db.sqlite3",
         }
     }
-    print("[Database] Using SQLite (No PostgreSQL config found)")
+    print("[Database] Using SQLite (Development mode)")
 
 
 # Password validation

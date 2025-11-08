@@ -10,6 +10,7 @@ psycopg[binary]
 
 # Environment
 python-dotenv
+dj-database-url
 
 # Async tasks
 celery
