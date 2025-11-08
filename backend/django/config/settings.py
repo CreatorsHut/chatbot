@@ -35,7 +35,7 @@ if env_path.exists():
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-y24y%wzmxh^3+9ger!=^dx(z4p4u26+ivky6jif$jk!piusb++")
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # Production: set to "false" in environment variables
@@ -43,6 +43,8 @@ DEBUG = os.getenv("DJANGO_DEBUG", "false").lower() == "true"
 
 ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if os.getenv("DJANGO_ALLOWED_HOSTS") != "*" else ["*"]
 
+# Port configuration (Railway assigns PORT dynamically)
+PORT = os.getenv("PORT", "")
 
 # Application definition
 
@@ -207,10 +209,7 @@ SIMPLE_JWT = {
 # =============================================================================
 # CORS SETTINGS
 # =============================================================================
-CORS_ALLOWED_ORIGINS = os.getenv(
-    "CORS_ALLOWED_ORIGINS",
-    "http://localhost:3000,http://127.0.0.1:3000"
-).split(",")
+CORS_ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS", "").split(",") if os.getenv("CORS_ALLOWED_ORIGINS") else []
 
 CORS_ALLOW_CREDENTIALS = True
 
@@ -219,12 +218,12 @@ CORS_ALLOW_CREDENTIALS = True
 # =============================================================================
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
-SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET", "app-media")
+SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET", "")
 
 # =============================================================================
 # REDIS SETTINGS (for Celery/RQ)
 # =============================================================================
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+REDIS_URL = os.getenv("REDIS_URL", "")
 
 # =============================================================================
 # CELERY SETTINGS

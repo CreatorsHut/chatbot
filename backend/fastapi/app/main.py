@@ -31,7 +31,7 @@ app.add_middleware(
 # OpenAI Configuration
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
-DJANGO_BASE_URL = os.getenv("DJANGO_BASE_URL", "http://localhost:8000")
+DJANGO_BASE_URL = os.getenv("DJANGO_BASE_URL", "")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o")
 DALLE_MODEL = os.getenv("DALLE_MODEL", "dall-e-3")
 

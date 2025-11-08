@@ -7,7 +7,7 @@ import os
 from typing import Optional, Dict, Any
 
 
-DJANGO_BASE_URL = os.getenv("DJANGO_BASE_URL", "http://localhost:8000")
+DJANGO_BASE_URL = os.getenv("DJANGO_BASE_URL", "")
 DJANGO_API_KEY = os.getenv("DJANGO_API_KEY", "")  # 선택적: API Key 인증
 
 
