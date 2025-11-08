@@ -40,24 +40,10 @@ function LoginPageContent() {
     }
 
     try {
-      // API 호출
-      const response = await fetch('http://localhost:8000/api/v1/auth/login/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-        }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        setError(data.error || data.message || '로그인에 실패했습니다.');
-        setLoading(false);
-        return;
-      }
-
-      const data = await response.json();
+      // API 함수 사용으로 변경
+      const { login } = await import('@/lib/api');
+      
+      const data = await login(formData.email, formData.password);
       
       // 토큰 및 사용자 정보 저장
       localStorage.setItem('token', data.access);
@@ -67,9 +53,9 @@ function LoginPageContent() {
 
       // 리다이렉트 URL로 이동 (기본값: 홈)
       router.push(redirectUrl);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Login error:', err);
-      setError('네트워크 오류가 발생했습니다. 서버가 실행 중인지 확인해주세요.');
+      setError(err.message || '로그인에 실패했습니다.');
     } finally {
       setLoading(false);
     }

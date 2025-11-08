@@ -3,8 +3,29 @@
  * Django REST API 및 FastAPI와 통신
  */
 
-const DJANGO_API_URL = process.env.NEXT_PUBLIC_DJANGO_API_URL || 'http://localhost:8000/api/v1';
-const FASTAPI_URL = process.env.NEXT_PUBLIC_FASTAPI_URL || 'http://localhost:8080';
+// 프로덕션 환경 감지 (Vercel에서 자동 제공)
+const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
+
+// Railway 백엔드 URL (프로덕션)
+const PRODUCTION_DJANGO_URL = 'https://chatbot-production-848e.up.railway.app/api/v1';
+const PRODUCTION_FASTAPI_URL = 'https://fastapi-production-xxxx.up.railway.app'; // FastAPI 배포 후 교체 필요
+
+// API URL 설정 (프로덕션 우선)
+const DJANGO_API_URL = process.env.NEXT_PUBLIC_DJANGO_API_URL || 
+  (isProduction ? PRODUCTION_DJANGO_URL : 'http://localhost:8000/api/v1');
+const FASTAPI_URL = process.env.NEXT_PUBLIC_FASTAPI_URL || 
+  (isProduction ? PRODUCTION_FASTAPI_URL : 'http://localhost:8080');
+
+// 디버깅용 (브라우저 콘솔에 출력)
+if (typeof window !== 'undefined') {
+  console.log('[API Config]', {
+    environment: isProduction ? 'production' : 'development',
+    DJANGO_API_URL,
+    FASTAPI_URL,
+    VERCEL: process.env.VERCEL,
+    NODE_ENV: process.env.NODE_ENV
+  });
+}
 
 // ==================== Types ====================
 

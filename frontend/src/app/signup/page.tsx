@@ -56,43 +56,22 @@ export default function SignupPage() {
     }
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-      const registerUrl = `${apiUrl}/api/v1/auth/register/`;
-
-      console.log('[Signup] API URL:', registerUrl);
+      // API 함수 사용으로 변경
+      const { register } = await import('@/lib/api');
+      
       console.log('[Signup] Sending request:', {
         email: formData.email,
-        username: formData.email.split('@')[0],
+        username: formData.name,
         first_name: formData.name,
       });
 
-      const response = await fetch(registerUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: formData.email,
-          username: formData.email.split('@')[0],
-          first_name: formData.name,
-          password: formData.password,
-          password_confirm: formData.confirmPassword,
-        }),
-      });
-
-      console.log('[Signup] Response status:', response.status);
-      const data = await response.json();
-      console.log('[Signup] Response data:', data);
-
-      if (!response.ok) {
-        console.error('[Signup] Registration failed:', data);
-        const errorMessage =
-          data.message ||
-          data.email?.[0] ||
-          data.username?.[0] ||
-          data.password?.[0] ||
-          '회원가입에 실패했습니다.';
-        setError(errorMessage);
-        return;
-      }
+      const data = await register(
+        formData.email,
+        formData.name,
+        formData.name,
+        formData.password,
+        formData.confirmPassword
+      );
 
       console.log('[Signup] Registration successful, storing token and user data');
       localStorage.setItem('token', data.access);
@@ -100,11 +79,11 @@ export default function SignupPage() {
       localStorage.setItem('isLoggedIn', 'true');
       localStorage.setItem('user', JSON.stringify(data.user));
 
-      console.log('[Signup] Redirecting to login page');
-      router.push('/login');
-    } catch (err) {
+      console.log('[Signup] Redirecting to home page');
+      router.push('/');
+    } catch (err: any) {
       console.error('[Signup] Error:', err);
-      setError('네트워크 오류가 발생했습니다.');
+      setError(err.message || '회원가입에 실패했습니다.');
     } finally {
       setLoading(false);
     }
