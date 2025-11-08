@@ -8,7 +8,7 @@ const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL
 
 // Railway 백엔드 URL (프로덕션)
 const PRODUCTION_DJANGO_URL = 'https://chatbot-production-848e.up.railway.app/api/v1';
-const PRODUCTION_FASTAPI_URL = 'https://fastapi-production-xxxx.up.railway.app'; // FastAPI 배포 후 교체 필요
+const PRODUCTION_FASTAPI_URL = 'https://fastapi-production-287b.up.railway.app';
 
 // API URL 설정 (프로덕션 우선)
 const DJANGO_API_URL = process.env.NEXT_PUBLIC_DJANGO_API_URL || 
