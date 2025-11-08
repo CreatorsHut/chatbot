@@ -5,6 +5,6 @@
   },
   "deploy": {
     "numReplicas": 1,
-    "startCommand": "python manage.py migrate && gunicorn config.wsgi --bind 0.0.0.0:$PORT"
+    "startCommand": "gunicorn config.wsgi --bind 0.0.0.0:$PORT"
   }
 }
