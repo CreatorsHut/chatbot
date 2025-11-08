@@ -4,6 +4,7 @@
     "builder": "nixpacks"
   },
   "deploy": {
-    "numReplicas": 1
+    "numReplicas": 1,
+    "startCommand": "python run_all.py"
   }
 }
