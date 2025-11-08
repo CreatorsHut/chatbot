@@ -9,7 +9,6 @@ sse-starlette
 psycopg[binary]
 redis
 celery
-rq
 openai
 python-dotenv
 opentelemetry-api

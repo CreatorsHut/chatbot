@@ -1,14 +1,17 @@
 """
-백그라운드 작업 정의
+Celery 비동기 작업 정의
 
-RQ(Redis Queue)를 통해 실행되는 비동기 작업들
+Redis를 통해 실행되는 백그라운드 작업들
 """
 
 import os
 from typing import Dict, Any, Optional
+from .celery_app import celery_app
 
 
+@celery_app.task(bind=True, max_retries=3, name="tasks.generate_image_task")
 def generate_image_task(
+    self,
     prompt: str,
     size: str = "1024x1024",
     quality: str = "standard",
