@@ -33,3 +33,6 @@ celery_app.conf.update(
 
 print(f"[Celery] Broker: {REDIS_URL[:50]}...")
 print(f"[Celery] Backend: {REDIS_URL[:50]}...")
+
+# 작업 자동 로드
+celery_app.autodiscover_tasks(['app'])
