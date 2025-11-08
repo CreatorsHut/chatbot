@@ -21,6 +21,11 @@ django.setup()
 # 애플리케이션 초기화
 application = get_wsgi_application()
 
+# Port configuration (Railway assigns PORT dynamically)
+port = os.getenv("PORT", "")
+if port:
+    print(f"[WSGI] Configured port: {port}")
+
 # 배포 환경에서 자동으로 마이그레이션 실행 (한 번만)
 if os.environ.get("ENVIRONMENT", "").lower() == "production":
     try:
