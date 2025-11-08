@@ -104,10 +104,10 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Railway는 자동으로 DATABASE_URL을 생성합니다
 DATABASE_URL = os.getenv("DATABASE_URL", "")
 
-# 개별 PostgreSQL 변수 (개발 환경용)
-POSTGRES_DB = os.getenv("POSTGRES_DB", "character_chat")
-POSTGRES_USER = os.getenv("POSTGRES_USER", "postgres")
-POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "3311")
+# 개별 PostgreSQL 변수 (개발 환경용 - .env 파일에서 읽음)
+POSTGRES_DB = os.getenv("POSTGRES_DB", "")
+POSTGRES_USER = os.getenv("POSTGRES_USER", "")
+POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "")
 POSTGRES_HOST = os.getenv("POSTGRES_HOST", "localhost")
 POSTGRES_PORT = os.getenv("POSTGRES_PORT", "5432")
 
