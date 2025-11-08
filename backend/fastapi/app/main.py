@@ -396,19 +396,19 @@ async def generate_image(request: ImageGenerationRequest):
                 job_timeout='10m',  # 10분 타임아웃
             )
             
-            # Job을 queued 상태로 업데이트
+            # Job을 processing 상태로 업데이트 (Redis 큐에 추가됨)
             if job_id and request.save_to_db and request.user_token:
                 await django_client.update_generation_job(
                     job_id=job_id,
-                    status="queued",
+                    status="processing",
                     user_token=request.user_token
                 )
-            
+
             return {
                 "job_id": job_id,
                 "task_id": job.id,
-                "status": "queued",
-                "message": "Image generation queued. Check status with /image/status/{task_id}",
+                "status": "processing",
+                "message": "Image generation processing. Check status with /image/status/{task_id}",
                 "check_url": f"/image/status/{job.id}",
                 "success": True
             }
