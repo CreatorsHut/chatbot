@@ -393,12 +393,24 @@ async def generate_image(request: ImageGenerationRequest):
 
         from .tasks import generate_image_task
 
+        # JWT 토큰에서 user_id 추출
+        user_id = None
+        if request.user_token:
+            try:
+                import jwt
+                decoded = jwt.decode(request.user_token, options={"verify_signature": False})
+                user_id = decoded.get("user_id")
+                print(f"[FastAPI] Extracted user_id from token: {user_id}")
+            except Exception as e:
+                print(f"[FastAPI] Failed to extract user_id from token: {e}")
+
         # Celery 태스크 큐에 추가
         task = generate_image_task.delay(
             prompt=request.prompt,
             size=request.size,
             quality=request.quality,
             job_id=job_id,
+            user_id=user_id,
             user_token=request.user_token,
         )
 

@@ -16,6 +16,7 @@ def generate_image_task(
     size: str = "1024x1024",
     quality: str = "standard",
     job_id: Optional[int] = None,
+    user_id: Optional[int] = None,
     user_token: str = "",
 ) -> Dict[str, Any]:
     """
@@ -26,12 +27,14 @@ def generate_image_task(
         size: 이미지 크기
         quality: 품질 (standard/hd)
         job_id: Django DB의 GenerationJob ID
+        user_id: 사용자 ID (Supabase 저장용)
         user_token: 사용자 JWT 토큰
 
     Returns:
         결과 딕셔너리 (url, revised_prompt 등)
     """
     from .django_client import django_client
+    from .supabase_client import upload_image_to_supabase
 
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
     OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
@@ -84,6 +87,23 @@ def generate_image_task(
         print(f"[Task] URL: {image_url[:80]}...")
         print(f"[Task] Revised Prompt: {revised_prompt[:50]}...")
 
+        # Supabase 스토리지에 업로드
+        final_image_url = image_url
+        if user_id:
+            print(f"[Task] Uploading to Supabase Storage...")
+            supabase_url = upload_image_to_supabase(
+                image_url=image_url,
+                user_id=user_id,
+                filename="generated_image.png"
+            )
+            if supabase_url:
+                final_image_url = supabase_url
+                print(f"[Task] ✅ Supabase URL: {final_image_url}")
+            else:
+                print(f"[Task] ⚠️ Supabase upload failed, using DALL-E URL")
+        else:
+            print(f"[Task] ⚠️ user_id not provided, skipping Supabase upload")
+
         # Django DB 업데이트 (비동기 함수를 동기로 실행)
         if job_id and user_token:
             print(f"[Task] Updating Django job {job_id} to completed...")
@@ -92,7 +112,7 @@ def generate_image_task(
                 job_id=job_id,
                 status="completed",
                 result_data={
-                    "url": image_url,
+                    "url": final_image_url,
                     "revised_prompt": revised_prompt,
                     "model": DALLE_MODEL,
                     "size": size,
@@ -106,7 +126,7 @@ def generate_image_task(
 
         return {
             "success": True,
-            "url": image_url,
+            "url": final_image_url,
             "revised_prompt": revised_prompt,
             "model": DALLE_MODEL,
         }
