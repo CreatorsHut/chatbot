@@ -164,7 +164,16 @@ USE_TZ = True
 
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-STATIC_FILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+
+# Django 5.2+ 호환 STORAGES 설정
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -212,6 +221,41 @@ SIMPLE_JWT = {
 CORS_ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS", "").split(",") if os.getenv("CORS_ALLOWED_ORIGINS") else []
 
 CORS_ALLOW_CREDENTIALS = True
+
+# =============================================================================
+# CSRF & HTTPS SETTINGS (Railway 배포용)
+# =============================================================================
+# Railway는 HTTPS 프록시를 사용하므로 이 설정이 필요합니다
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# CSRF Trusted Origins (Railway 도메인 허용)
+CSRF_TRUSTED_ORIGINS = []
+
+# DJANGO_ALLOWED_HOSTS에서 자동으로 CSRF_TRUSTED_ORIGINS 생성
+if ALLOWED_HOSTS and ALLOWED_HOSTS != ["*"]:
+    for host in ALLOWED_HOSTS:
+        if host and host not in ["localhost", "127.0.0.1"]:
+            # HTTPS 프로토콜 추가 (Railway는 기본적으로 HTTPS)
+            CSRF_TRUSTED_ORIGINS.append(f"https://{host}")
+
+# 추가 CSRF 신뢰 도메인 (환경변수로 직접 설정 가능)
+if os.getenv("CSRF_TRUSTED_ORIGINS"):
+    additional_origins = os.getenv("CSRF_TRUSTED_ORIGINS").split(",")
+    CSRF_TRUSTED_ORIGINS.extend([origin.strip() for origin in additional_origins if origin.strip()])
+
+# 개발 환경에서는 localhost 허용
+if DEBUG:
+    CSRF_TRUSTED_ORIGINS.extend([
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+    ])
+
+# 디버깅용 출력 (Railway 로그에서 확인 가능)
+if not DEBUG:
+    print(f"[Django Settings] ALLOWED_HOSTS: {ALLOWED_HOSTS}")
+    print(f"[Django Settings] CSRF_TRUSTED_ORIGINS: {CSRF_TRUSTED_ORIGINS}")
 
 # =============================================================================
 # SUPABASE STORAGE SETTINGS
