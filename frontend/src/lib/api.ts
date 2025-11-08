@@ -385,12 +385,24 @@ export interface ImageGenerationResult {
   model: string;
 }
 
+export interface ImageGenerationResponse {
+  job_id?: number;
+  task_id?: string;
+  status: string;
+  message?: string;
+  check_url?: string;
+  success: boolean;
+  url?: string;
+  revised_prompt?: string;
+  model?: string;
+}
+
 export async function generateImage(
   prompt: string,
   size: string = '1024x1024',
   quality: string = 'standard',
   userToken: string = ''
-): Promise<ImageGenerationResult> {
+): Promise<ImageGenerationResponse> {
   try {
     console.log("\n[API] Calling FastAPI /image/generate endpoint");
     console.log("[API] URL:", `${FASTAPI_URL}/image/generate`);

@@ -4,7 +4,6 @@
     "builder": "nixpacks"
   },
   "deploy": {
-    "numReplicas": 1,
-    "startCommand": "python -m uvicorn app.main:app --host 0.0.0.0 --port ${PORT}"
+    "numReplicas": 1
   }
 }

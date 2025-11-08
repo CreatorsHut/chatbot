@@ -19,15 +19,82 @@ export default function ImageGenerationPage() {
   const [result, setResult] = useState<ImageGenerationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<Array<ImageGenerationResult & { prompt: string }>>([]);
+  const [taskId, setTaskId] = useState<string | null>(null);
+  const [pollInterval, setPollInterval] = useState<NodeJS.Timeout | null>(null);
 
   // 로그인 상태 확인 (리다이렉트 없음)
   useEffect(() => {
     const loggedIn = localStorage.getItem("isLoggedIn") === "true";
     const token = localStorage.getItem("token") || "";
-    
+
     setIsLoggedIn(loggedIn);
     setUserToken(token);
   }, []);
+
+  // 작업 상태 폴링
+  const pollTaskStatus = async (currentTaskId: string) => {
+    console.log(`[Frontend] Polling status for task: ${currentTaskId}`);
+
+    try {
+      const response = await fetch(
+        `https://fastapi-production-287b.up.railway.app/image/status/${currentTaskId}`
+      );
+
+      if (!response.ok) {
+        console.error(`[Frontend] Status check failed: ${response.status}`);
+        return;
+      }
+
+      const status = await response.json();
+      console.log(`[Frontend] Task status: ${status.status}`, status);
+
+      if (status.success && status.result) {
+        console.log(`[Frontend] ✅ Task completed!`);
+        setResult(status.result);
+        setHistory(prev => [{ ...status.result, prompt }, ...prev].slice(0, 6));
+        setTaskId(null);
+        setGenerating(false);
+
+        // 폴링 중지
+        if (pollInterval) {
+          clearInterval(pollInterval);
+          setPollInterval(null);
+        }
+      } else if (status.status === "FAILURE") {
+        console.error(`[Frontend] ❌ Task failed: ${status.error}`);
+        setError(status.error || "이미지 생성에 실패했습니다.");
+        setTaskId(null);
+        setGenerating(false);
+
+        if (pollInterval) {
+          clearInterval(pollInterval);
+          setPollInterval(null);
+        }
+      }
+      // PENDING, PROGRESS 상태는 계속 폴링
+    } catch (err) {
+      console.error(`[Frontend] Polling error:`, err);
+    }
+  };
+
+  // taskId 변경 시 폴링 시작
+  useEffect(() => {
+    if (!taskId) return;
+
+    console.log(`[Frontend] Starting polling for task: ${taskId}`);
+
+    // 첫 번째 폴링 즉시 실행
+    pollTaskStatus(taskId);
+
+    // 2초마다 상태 확인
+    const interval = setInterval(() => pollTaskStatus(taskId), 2000);
+    setPollInterval(interval);
+
+    return () => {
+      clearInterval(interval);
+      setPollInterval(null);
+    };
+  }, [taskId]);
 
   const handleGenerate = async () => {
     if (!prompt.trim()) {
@@ -54,17 +121,25 @@ export default function ImageGenerationPage() {
       console.log("[Frontend] User Token:", userToken ? "✓ Present" : "✗ Missing");
       console.log("========================================\n");
 
-      const imageResult = await generateImage(prompt, size, quality, userToken);
+      const response = await generateImage(prompt, size, quality, userToken);
 
       console.log("\n========================================");
-      console.log("[Frontend] ✅ Image generation successful!");
-      console.log("[Frontend] Result:", imageResult);
+      console.log("[Frontend] ✅ API Response received!");
+      console.log("[Frontend] Response:", response);
       console.log("========================================\n");
 
-      setResult(imageResult);
-
-      // 히스토리에 추가
-      setHistory(prev => [{ ...imageResult, prompt }, ...prev].slice(0, 6)); // 최대 6개만 유지
+      // task_id가 있으면 폴링 시작 (Celery async)
+      if (response.task_id) {
+        console.log(`[Frontend] 📋 Task queued, starting polling for task: ${response.task_id}`);
+        setTaskId(response.task_id);
+        // 폴링이 완료되면 자동으로 result 설정됨
+      } else if (response.url) {
+        // task_id가 없으면 즉시 결과 (동기 처리)
+        console.log("[Frontend] ✅ Image generated immediately (sync mode)");
+        setResult(response as ImageGenerationResult);
+        setHistory(prev => [{ ...response as ImageGenerationResult, prompt }, ...prev].slice(0, 6));
+        setGenerating(false);
+      }
     } catch (err: any) {
       console.error("\n========================================");
       console.error("[Frontend] ❌ Image generation failed!");
