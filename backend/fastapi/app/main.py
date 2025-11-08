@@ -450,12 +450,16 @@ async def generate_image(request: ImageGenerationRequest):
 
 if __name__ == "__main__":
     import socket
-    
-    host = os.getenv("FASTAPI_HOST", "127.0.0.1")
+
+    host = os.getenv("FASTAPI_HOST", "0.0.0.0")
     port_str = os.getenv("FASTAPI_PORT", "8080")
     port = int(port_str) if port_str.isdigit() else 8080
-    
-    # 포트 사용 가능 여부 확인 및 자동 대체
+
+    # 프로덕션 환경에서는 reload=False
+    is_production = os.getenv("ENVIRONMENT", "development").lower() == "production"
+    reload = not is_production
+
+    # 포트 사용 가능 여부 확인 및 자동 대체 (개발 환경에서만)
     def find_available_port(start_port, max_attempts=10):
         for attempt in range(max_attempts):
             test_port = start_port + attempt
@@ -466,13 +470,19 @@ if __name__ == "__main__":
             except OSError:
                 continue
         raise RuntimeError(f"Could not find available port in range {start_port}-{start_port+max_attempts-1}")
-    
+
     try:
-        available_port = find_available_port(port)
-        if available_port != port:
-            print(f"⚠️  Port {port} is in use. Using port {available_port} instead.")
-        print(f"🚀 Starting FastAPI on http://{host}:{available_port}")
-        uvicorn.run("app.main:app", host=host, port=available_port, reload=True)
+        if is_production:
+            # 프로덕션: 포트 자동 감지 없음
+            print(f"🚀 Starting FastAPI (Production) on http://{host}:{port}")
+            uvicorn.run("app.main:app", host=host, port=port, reload=False)
+        else:
+            # 개발: 포트 자동 감지
+            available_port = find_available_port(port)
+            if available_port != port:
+                print(f"⚠️  Port {port} is in use. Using port {available_port} instead.")
+            print(f"🚀 Starting FastAPI (Development) on http://{host}:{available_port}")
+            uvicorn.run("app.main:app", host=host, port=available_port, reload=True)
     except RuntimeError as e:
         print(f"❌ Error: {e}")
         print("💡 Try specifying a different port: FASTAPI_PORT=8001 python -m app.main")

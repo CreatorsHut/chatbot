@@ -24,6 +24,7 @@ Pillow
 
 # Production server
 gunicorn
+whitenoise
 
 # Utilities
 python-slugify

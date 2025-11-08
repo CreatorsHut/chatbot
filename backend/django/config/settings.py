@@ -38,7 +38,8 @@ if env_path.exists():
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-y24y%wzmxh^3+9ger!=^dx(z4p4u26+ivky6jif$jk!piusb++")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv("DJANGO_DEBUG", "true").lower() == "true"
+# Production: set to "false" in environment variables
+DEBUG = os.getenv("DJANGO_DEBUG", "false").lower() == "true"
 
 ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if os.getenv("DJANGO_ALLOWED_HOSTS") != "*" else ["*"]
 
@@ -66,6 +67,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",  # WhiteNoise 미들웨어 (정적파일 제공)
     "corsheaders.middleware.CorsMiddleware",  # CORS 미들웨어 추가
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -213,7 +215,9 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+STATIC_FILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
