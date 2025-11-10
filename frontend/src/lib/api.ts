@@ -477,3 +477,119 @@ export async function addMessage(
     throw error;
   }
 }
+
+// ==================== User Profile API ====================
+
+export interface UserStats {
+  points: number;
+  characters_count: number;
+  images_count: number;
+  conversations_count: number;
+}
+
+export interface UserCharacter {
+  id: number;
+  name: string;
+  status: string;
+  created_at: string;
+}
+
+export interface ImageGeneration {
+  id: number;
+  prompt: string;
+  status: string;
+  created_at: string;
+}
+
+export interface PointsTransaction {
+  id: number;
+  type: string;
+  amount: number;
+  created_at: string;
+}
+
+export async function fetchUserStats(token: string): Promise<UserStats> {
+  try {
+    const response = await fetch(`${DJANGO_API_URL}/users/stats/`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch user stats: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching user stats:', error);
+    throw error;
+  }
+}
+
+export async function fetchUserCharacters(token: string): Promise<UserCharacter[]> {
+  try {
+    const response = await fetch(`${DJANGO_API_URL}/characters/?owned=true`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch user characters: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.results || data;
+  } catch (error) {
+    console.error('Error fetching user characters:', error);
+    throw error;
+  }
+}
+
+export async function fetchImageGenerations(token: string): Promise<ImageGeneration[]> {
+  try {
+    const response = await fetch(`${DJANGO_API_URL}/media/generation_jobs/`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image generations: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.results || data;
+  } catch (error) {
+    console.error('Error fetching image generations:', error);
+    throw error;
+  }
+}
+
+export async function fetchPointsHistory(token: string): Promise<PointsTransaction[]> {
+  try {
+    const response = await fetch(`${DJANGO_API_URL}/users/points_history/`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch points history: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching points history:', error);
+    throw error;
+  }
+}

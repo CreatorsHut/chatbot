@@ -5,7 +5,18 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { fetchConversations, Conversation } from '@/lib/api';
+import {
+  fetchConversations,
+  Conversation,
+  fetchUserStats,
+  fetchUserCharacters,
+  fetchImageGenerations,
+  fetchPointsHistory,
+  UserStats,
+  UserCharacter,
+  ImageGeneration,
+  PointsTransaction
+} from '@/lib/api';
 
 interface UserProfile {
   id?: number;
@@ -28,26 +39,18 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
 
-  // 포인트 (포인트 - 임시 데이터)
-  const [points, setPoints] = useState(1250);
-  const [pointsHistory] = useState([
-    { type: '캐릭터 대화', amount: 100, date: '2024-01-15' },
-    { type: '이미지 생성', amount: 50, date: '2024-01-14' },
-    { type: '일일 보너스', amount: 150, date: '2024-01-13' },
-  ]);
+  // 포인트
+  const [points, setPoints] = useState(0);
+  const [pointsHistory, setPointsHistory] = useState<PointsTransaction[]>([]);
+  const [loadingPoints, setLoadingPoints] = useState(false);
 
-  // 캐릭터 (사용자가 생성한 캐릭터)
-  const [characters, setCharacters] = useState([
-    { id: 1, name: '수학 도우미', status: '활성', created_at: '2024-01-10' },
-    { id: 2, name: '영어 튜터', status: '활성', created_at: '2024-01-05' },
-  ]);
+  // 캐릭터
+  const [characters, setCharacters] = useState<UserCharacter[]>([]);
+  const [loadingCharacters, setLoadingCharacters] = useState(false);
 
-  // 이미지 생성 (생성 기록)
-  const [imageGeneration] = useState([
-    { id: 1, prompt: '귀여운 로봇 캐릭터', status: '완료', date: '2024-01-14' },
-    { id: 2, prompt: '한국 교복을 입은 학생', status: '완료', date: '2024-01-12' },
-    { id: 3, prompt: '미래의 도서관', status: '실패', date: '2024-01-10' },
-  ]);
+  // 이미지 생성
+  const [imageGeneration, setImageGeneration] = useState<ImageGeneration[]>([]);
+  const [loadingImages, setLoadingImages] = useState(false);
 
   // 대화 기록
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -72,24 +75,56 @@ export default function ProfilePage() {
       });
     }
 
-    // 대화 기록 로드
-    const loadConversations = async () => {
+    // 모든 데이터 로드
+    const loadAllData = async () => {
       try {
-        setLoadingConversations(true);
         const token = localStorage.getItem('token');
-        if (token) {
-          const data = await fetchConversations(token);
-          setConversations(data);
+        if (!token) {
+          router.push('/login');
+          return;
+        }
+
+        // 병렬 로드
+        const [convData, statsData, charData, imgData, pointsData] = await Promise.allSettled([
+          fetchConversations(token),
+          fetchUserStats(token),
+          fetchUserCharacters(token),
+          fetchImageGenerations(token),
+          fetchPointsHistory(token),
+        ]);
+
+        // 대화 기록
+        if (convData.status === 'fulfilled') {
+          setConversations(convData.value);
+        }
+
+        // 통계
+        if (statsData.status === 'fulfilled') {
+          setPoints(statsData.value.points || 0);
+        }
+
+        // 캐릭터
+        if (charData.status === 'fulfilled') {
+          setCharacters(charData.value);
+        }
+
+        // 이미지
+        if (imgData.status === 'fulfilled') {
+          setImageGeneration(imgData.value);
+        }
+
+        // 포인트 히스토리
+        if (pointsData.status === 'fulfilled') {
+          setPointsHistory(pointsData.value);
         }
       } catch (err) {
-        console.error('대화 기록 로드 오류:', err);
+        console.error('데이터 로드 오류:', err);
       } finally {
-        setLoadingConversations(false);
+        setLoading(false);
       }
     };
 
-    loadConversations();
-    setLoading(false);
+    loadAllData();
   }, [router]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -288,15 +323,21 @@ export default function ProfilePage() {
             <div className="mb-6">
               <h3 className="text-[14px] font-semibold text-[#111827] mb-4">최근 포인트 내역</h3>
               <div className="space-y-3">
-                {pointsHistory.map((item, idx) => (
-                  <div key={idx} className="flex items-center justify-between text-[13px]">
-                    <div>
-                      <p className="text-[#111827] font-semibold">{item.type}</p>
-                      <p className="text-[#6b7380] text-[12px]">{item.date}</p>
+                {pointsHistory.length > 0 ? (
+                  pointsHistory.map((item, idx) => (
+                    <div key={idx} className="flex items-center justify-between text-[13px]">
+                      <div>
+                        <p className="text-[#111827] font-semibold">{item.type}</p>
+                        <p className="text-[#6b7380] text-[12px]">
+                          {new Date(item.created_at).toLocaleDateString('ko-KR')}
+                        </p>
+                      </div>
+                      <p className="text-[#10b981] font-semibold">+{item.amount}</p>
                     </div>
-                    <p className="text-[#10b981] font-semibold">+{item.amount}</p>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="text-[#6b7380] text-center py-4">포인트 내역이 없습니다.</p>
+                )}
               </div>
             </div>
 
@@ -322,17 +363,23 @@ export default function ProfilePage() {
             <div className="mb-6">
               <h3 className="text-[14px] font-semibold text-[#111827] mb-4">내 캐릭터</h3>
               <div className="space-y-3">
-                {characters.map((char) => (
-                  <div key={char.id} className="flex items-center justify-between text-[13px]">
-                    <div>
-                      <p className="text-[#111827] font-semibold">{char.name}</p>
-                      <p className="text-[#6b7380] text-[12px]">생성: {char.created_at}</p>
+                {characters.length > 0 ? (
+                  characters.map((char) => (
+                    <div key={char.id} className="flex items-center justify-between text-[13px]">
+                      <div>
+                        <p className="text-[#111827] font-semibold">{char.name}</p>
+                        <p className="text-[#6b7380] text-[12px]">
+                          생성: {new Date(char.created_at).toLocaleDateString('ko-KR')}
+                        </p>
+                      </div>
+                      <span className="bg-[#d1fae5] text-[#065f46] text-[11px] font-semibold px-2 py-1 rounded-full">
+                        {char.status}
+                      </span>
                     </div>
-                    <span className="bg-[#d1fae5] text-[#065f46] text-[11px] font-semibold px-2 py-1 rounded-full">
-                      {char.status}
-                    </span>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="text-[#6b7380] text-center py-4">생성한 캐릭터가 없습니다.</p>
+                )}
               </div>
             </div>
 
@@ -358,23 +405,29 @@ export default function ProfilePage() {
             <div className="mb-6">
               <h3 className="text-[14px] font-semibold text-[#111827] mb-4">최근 생성</h3>
               <div className="space-y-3">
-                {imageGeneration.map((img) => (
-                  <div key={img.id} className="flex items-start justify-between text-[13px]">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[#111827] font-semibold truncate">{img.prompt}</p>
-                      <p className="text-[#6b7380] text-[12px]">{img.date}</p>
+                {imageGeneration.length > 0 ? (
+                  imageGeneration.map((img) => (
+                    <div key={img.id} className="flex items-start justify-between text-[13px]">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[#111827] font-semibold truncate">{img.prompt}</p>
+                        <p className="text-[#6b7380] text-[12px]">
+                          {new Date(img.created_at).toLocaleDateString('ko-KR')}
+                        </p>
+                      </div>
+                      <span
+                        className={`text-[11px] font-semibold px-2 py-1 rounded-full whitespace-nowrap ml-2 ${
+                          img.status === 'completed' || img.status === '완료'
+                            ? 'bg-[#d1fae5] text-[#065f46]'
+                            : 'bg-[#fee2e2] text-[#991b1b]'
+                        }`}
+                      >
+                        {img.status === 'completed' ? '완료' : img.status === 'failed' ? '실패' : img.status}
+                      </span>
                     </div>
-                    <span
-                      className={`text-[11px] font-semibold px-2 py-1 rounded-full whitespace-nowrap ml-2 ${
-                        img.status === '완료'
-                          ? 'bg-[#d1fae5] text-[#065f46]'
-                          : 'bg-[#fee2e2] text-[#991b1b]'
-                      }`}
-                    >
-                      {img.status}
-                    </span>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="text-[#6b7380] text-center py-4">생성된 이미지가 없습니다.</p>
+                )}
               </div>
             </div>
 
