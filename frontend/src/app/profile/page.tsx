@@ -12,7 +12,6 @@ import {
   fetchUserCharacters,
   fetchImageGenerations,
   fetchPointsHistory,
-  UserStats,
   UserCharacter,
   ImageGeneration,
   PointsTransaction
@@ -42,19 +41,15 @@ export default function ProfilePage() {
   // 포인트
   const [points, setPoints] = useState(0);
   const [pointsHistory, setPointsHistory] = useState<PointsTransaction[]>([]);
-  const [loadingPoints, setLoadingPoints] = useState(false);
 
   // 캐릭터
   const [characters, setCharacters] = useState<UserCharacter[]>([]);
-  const [loadingCharacters, setLoadingCharacters] = useState(false);
 
   // 이미지 생성
   const [imageGeneration, setImageGeneration] = useState<ImageGeneration[]>([]);
-  const [loadingImages, setLoadingImages] = useState(false);
 
   // 대화 기록
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [loadingConversations, setLoadingConversations] = useState(false);
 
   useEffect(() => {
     // 로그인 확인
@@ -309,7 +304,7 @@ export default function ProfilePage() {
         {/* 3개 섹션 그리드 */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
           {/* 1. 포인트 섹션 */}
-          <div className="bg-white rounded-2xl p-8 shadow-sm border border-[#eef2f7]">
+          <div className="bg-white rounded-2xl p-8 shadow-sm border border-[#eef2f7] flex flex-col h-full">
             <div className="flex items-center gap-3 mb-6">
               <span className="text-[32px]">⭐</span>
               <h2 className="text-[24px] font-bold text-[#111827]">포인트</h2>
@@ -320,9 +315,9 @@ export default function ProfilePage() {
               <p className="text-[44px] font-bold">{points.toLocaleString()}</p>
             </div>
 
-            <div className="mb-6">
+            <div className="mb-6 flex-1">
               <h3 className="text-[14px] font-semibold text-[#111827] mb-4">최근 포인트 내역</h3>
-              <div className="space-y-3">
+              <div className="space-y-3 max-h-40 overflow-y-auto">
                 {pointsHistory.length > 0 ? (
                   pointsHistory.map((item, idx) => (
                     <div key={idx} className="flex items-center justify-between text-[13px]">
@@ -341,7 +336,7 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            <Link href="/characters">
+            <Link href="/characters" className="block w-full">
               <button className="w-full h-10 bg-[#f2f5f9] text-[#111827] text-[14px] font-semibold rounded-lg hover:bg-[#e5ebf5] transition-colors">
                 캐릭터로 포인트 얻기
               </button>
@@ -349,7 +344,7 @@ export default function ProfilePage() {
           </div>
 
           {/* 2. 캐릭터 섹션 */}
-          <div className="bg-white rounded-2xl p-8 shadow-sm border border-[#eef2f7]">
+          <div className="bg-white rounded-2xl p-8 shadow-sm border border-[#eef2f7] flex flex-col h-full">
             <div className="flex items-center gap-3 mb-6">
               <span className="text-[32px]">🤖</span>
               <h2 className="text-[24px] font-bold text-[#111827]">캐릭터</h2>
@@ -360,9 +355,9 @@ export default function ProfilePage() {
               <p className="text-[14px] text-[#6b7380] mt-2">생성한 캐릭터</p>
             </div>
 
-            <div className="mb-6">
+            <div className="mb-6 flex-1">
               <h3 className="text-[14px] font-semibold text-[#111827] mb-4">내 캐릭터</h3>
-              <div className="space-y-3">
+              <div className="space-y-3 max-h-40 overflow-y-auto">
                 {characters.length > 0 ? (
                   characters.map((char) => (
                     <div key={char.id} className="flex items-center justify-between text-[13px]">
@@ -383,7 +378,7 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            <Link href="/characters/create">
+            <Link href="/characters/create" className="block w-full">
               <button className="w-full h-10 bg-[#10b981] text-white text-[14px] font-semibold rounded-lg hover:bg-[#059669] transition-colors">
                 새 캐릭터 생성
               </button>
@@ -391,7 +386,7 @@ export default function ProfilePage() {
           </div>
 
           {/* 3. 이미지 생성 섹션 */}
-          <div className="bg-white rounded-2xl p-8 shadow-sm border border-[#eef2f7]">
+          <div className="bg-white rounded-2xl p-8 shadow-sm border border-[#eef2f7] flex flex-col h-full">
             <div className="flex items-center gap-3 mb-6">
               <span className="text-[32px]">🎨</span>
               <h2 className="text-[24px] font-bold text-[#111827]">이미지 생성</h2>
@@ -402,9 +397,9 @@ export default function ProfilePage() {
               <p className="text-[14px] text-[#6b7380] mt-2">생성된 이미지</p>
             </div>
 
-            <div className="mb-6">
+            <div className="mb-6 flex-1">
               <h3 className="text-[14px] font-semibold text-[#111827] mb-4">최근 생성</h3>
-              <div className="space-y-3">
+              <div className="space-y-3 max-h-40 overflow-y-auto">
                 {imageGeneration.length > 0 ? (
                   imageGeneration.map((img) => (
                     <div key={img.id} className="flex items-start justify-between text-[13px]">
@@ -431,7 +426,7 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            <Link href="/characters/create">
+            <Link href="/characters/create" className="block w-full">
               <button className="w-full h-10 bg-[#f2f5f9] text-[#111827] text-[14px] font-semibold rounded-lg hover:bg-[#e5ebf5] transition-colors">
                 이미지 생성하기
               </button>
@@ -443,9 +438,7 @@ export default function ProfilePage() {
         <div className="bg-white rounded-2xl p-8 shadow-sm border border-[#eef2f7]">
           <h2 className="text-[28px] font-bold text-[#111827] mb-6">최근 대화</h2>
 
-          {loadingConversations ? (
-            <p className="text-[#6b7380] text-center py-8">로딩 중...</p>
-          ) : conversations.length > 0 ? (
+          {conversations.length > 0 ? (
             <div className="space-y-3">
               {conversations.slice(0, 5).map((conv) => (
                 <div key={conv.id} className="flex items-center justify-between p-4 bg-[#fafbfd] rounded-xl">
