@@ -553,7 +553,7 @@ export async function fetchUserCharacters(token: string): Promise<UserCharacter[
 
 export async function fetchImageGenerations(token: string): Promise<ImageGeneration[]> {
   try {
-    const response = await fetch(`${DJANGO_API_URL}/media/generation_jobs/`, {
+    const response = await fetch(`${DJANGO_API_URL}/generation-jobs/`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
