@@ -36,9 +36,43 @@ AI 교육 캐릭터 채팅 플랫폼은 학생들이 다양한 AI 캐릭터 튜�
   - 이미지 생성 (DALL-E 3)
   - AI 응답 생성
 
-### 데이터베이스
+### 데이터베이스 및 스토리지
 - **SQLite**: 개발용
 - **PostgreSQL**: 프로덕션 (권장)
+- **Redis**: 작업 큐 브로커 및 캐시
+- **Supabase**: 이미지 클라우드 스토리지
+
+## 🏛️ 아키텍처 & 기술 상세
+
+### 비동기 이미지 생성 아키텍처
+```
+[Frontend] → [FastAPI] → [Celery Task Queue] → [Redis Broker]
+                           ↓
+                     [Celery Worker]
+                           ↓
+                     [DALL-E API]
+                           ↓
+                     [Supabase Storage]
+                           ↓
+                     [Return Public URL]
+```
+
+**특징:**
+- 📊 **비동기 처리**: 이미지 생성 중 다른 작업 계속 가능
+- ⚡ **즉시 응답**: Task ID를 바로 반환하고 백그라운드에서 처리
+- 📈 **확장성**: 워커 프로세스 추가로 동시 처리 능력 향상
+- 🔄 **폴링 패턴**: Frontend에서 2초 간격으로 상태 확인
+
+### Redis 역할
+- **Celery Broker**: 작업 메시지 큐 저장 및 전달
+- **Celery Backend**: 작업 결과 저장 및 상태 관리
+- **우점**: 빠른 메모리 기반 처리, 메시지 순서 보장
+
+### Supabase 역할
+- **클라우드 스토리지**: DALL-E 이미지 영구 저장
+- **폴더 구조**: `{user_id}/{date}/{timestamp}_image.png`
+- **공개 URL**: CDN을 통한 빠른 이미지 전송
+- **보안**: Service Role Key로 서버만 쓰기 권한 제한
 
 ## 📁 프로젝트 구조
 
@@ -129,21 +163,34 @@ npm run dev
 ```
 NEXT_PUBLIC_DJANGO_API_URL=http://localhost:8000/api/v1
 NEXT_PUBLIC_FASTAPI_URL=http://localhost:8080
+NEXT_PUBLIC_SUPABASE_URL=https://xxxxxxxxxxxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
 ### Backend Django (.env)
 ```
 DEBUG=True
 SECRET_KEY=your-secret-key
-DATABASE_URL=sqlite:///db.sqlite3
+DATABASE_URL=postgresql://user:password@localhost/dbname
 OPENAI_API_KEY=your-openai-key
+SUPABASE_URL=https://xxxxxxxxxxxx.supabase.co
+SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
 ### Backend FastAPI (.env)
 ```
 DJANGO_API_URL=http://localhost:8000
 OPENAI_API_KEY=your-openai-key
+REDIS_URL=redis://localhost:6379/0
+SUPABASE_URL=https://xxxxxxxxxxxx.supabase.co
+SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+SUPABASE_BUCKET=generated-images
 ```
+
+### 고급 설정
+Redis 및 Supabase 상세 설정은 다음 문서를 참고하세요:
+- [📚 Redis & Celery 설정 가이드](./docs/REDIS_SETUP.md)
+- [📚 Supabase 스토리지 설정 가이드](./docs/SUPABASE_SETUP.md)
 
 ## 🎯 주요 페이지
 
@@ -177,7 +224,8 @@ OPENAI_API_KEY=your-openai-key
 
 ### FastAPI AI
 - `POST /chat/stream` - 실시간 채팅 스트리밍
-- `POST /image/generate` - 이미지 생성
+- `POST /image/generate` - 이미지 생성 (비동기, task_id 반환)
+- `GET /image/status/{task_id}` - 이미지 생성 상태 확인 (Celery 작업 상태)
 
 ## 📦 배포
 
@@ -187,12 +235,47 @@ cd frontend
 vercel deploy
 ```
 
-### Heroku (Backend)
+### Railway (Backend: Django + FastAPI + Redis + PostgreSQL)
+
+#### 1단계: Railway 프로젝트 생성
+- Railway 대시보드에서 새 프로젝트 생성
+- PostgreSQL, Redis 서비스 추가
+
+#### 2단계: 환경 변수 설정
+FastAPI 서비스:
 ```bash
-cd backend/django
-heroku create your-app-name
-git push heroku main
+# Database
+DATABASE_URL=${{ Postgres.DATABASE_URL }}
+
+# Redis (Celery)
+REDIS_URL=${{ Redis.REDIS_URL }}
+
+# API Keys
+OPENAI_API_KEY=your-key
+DJANGO_API_URL=https://django-service-url.railway.app
+
+# Supabase
+SUPABASE_URL=your-supabase-url
+SUPABASE_SERVICE_KEY=your-service-key
+SUPABASE_BUCKET=generated-images
 ```
+
+Django 서비스:
+```bash
+DATABASE_URL=${{ Postgres.DATABASE_URL }}
+OPENAI_API_KEY=your-key
+SUPABASE_ANON_KEY=your-anon-key
+```
+
+#### 3단계: 배포
+```bash
+git push origin main
+# Railway가 자동으로 감지하여 배포
+```
+
+**상세 가이드:**
+- [📚 Redis & Celery 배포 가이드](./docs/REDIS_SETUP.md#railway-프로덕션-배포)
+- [📚 Supabase 배포 가이드](./docs/SUPABASE_SETUP.md#railway-환경-변수-설정)
 
 ## 🤝 기여하기
 
@@ -221,6 +304,15 @@ git push heroku main
 - Django & FastAPI 커뮤니티
 - Next.js 팀
 
+## 📚 추가 문서
+
+이 프로젝트의 심화된 설정 및 배포 방법은 다음 문서를 참고하세요:
+
+| 문서 | 설명 |
+|------|------|
+| [Redis & Celery 설정](./docs/REDIS_SETUP.md) | Redis 설치, Celery 워커 구성, Railway 배포, 트러블슈팅 |
+| [Supabase 스토리지 설정](./docs/SUPABASE_SETUP.md) | 스토리지 버킷 생성, API 키 관리, 이미지 업로드, 보안 |
+
 ---
 
-**마지막 업데이트**: 2025년 11월 7일
+**마지막 업데이트**: 2025년 11월 8일

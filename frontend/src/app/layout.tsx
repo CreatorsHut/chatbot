@@ -33,7 +33,7 @@ export const metadata: Metadata = {
     siteName: "StudyVerse",
   },
   other: {
-    "naver-site-verification": "8ae64c8cd79de2d9f2f7a7d6e3c4b5a6",
+    "naver-site-verification": "b0370de39e553389226ca37fdd5ad38adefa536b",
   },
 };
 
