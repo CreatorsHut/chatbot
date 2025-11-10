@@ -3,6 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.db.models import Count, Q
 from .models import User
 from .serializers import (
     UserRegisterSerializer,
@@ -166,3 +167,42 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
             {'message': '계정이 삭제되었습니다.'},
             status=status.HTTP_200_OK,
         )
+
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def stats(self, request):
+        """
+        사용자 통계 조회
+        GET /api/v1/users/stats/
+        """
+        user = request.user
+        from characters.models import Character
+        from conversations.models import Conversation
+        from media.models import GenerationJob
+
+        # 사용자가 생성한 캐릭터 수
+        characters_count = Character.objects.filter(owner=user).count()
+
+        # 사용자의 대화 수
+        conversations_count = Conversation.objects.filter(user=user).count()
+
+        # 사용자가 요청한 이미지 생성 작업 수
+        images_count = GenerationJob.objects.filter(user=user).count()
+
+        return Response({
+            'points': user.credit,
+            'characters_count': characters_count,
+            'conversations_count': conversations_count,
+            'images_count': images_count,
+        }, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def points_history(self, request):
+        """
+        포인트 거래 내역 조회 (현재는 dummy 데이터 반환)
+        GET /api/v1/users/points_history/
+        """
+        user = request.user
+
+        # TODO: 실제 포인트 거래 내역 모델 구현 필요
+        # 현재는 빈 배열 반환
+        return Response([], status=status.HTTP_200_OK)

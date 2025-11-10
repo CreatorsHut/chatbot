@@ -114,6 +114,7 @@ export default function ProfilePage() {
         }
       } catch (err) {
         console.error('데이터 로드 오류:', err);
+        // 에러가 발생해도 페이지는 로드되도록 함 (Promise.allSettled 사용)
       } finally {
         setLoading(false);
       }
