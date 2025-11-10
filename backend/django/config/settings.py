@@ -41,7 +41,10 @@ SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "")
 # Production: set to "false" in environment variables
 DEBUG = os.getenv("DJANGO_DEBUG", "false").lower() == "true"
 
-ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if os.getenv("DJANGO_ALLOWED_HOSTS") != "*" else ["*"]
+# ALLOWED_HOSTS 설정 (로컬, Railway, studyverse.store 도메인 모두 허용)
+default_allowed_hosts = "localhost,127.0.0.1,*.railway.app,studyverse.store,www.studyverse.store,api.studyverse.store"
+allowed_hosts_str = os.getenv("DJANGO_ALLOWED_HOSTS", default_allowed_hosts)
+ALLOWED_HOSTS = allowed_hosts_str.split(",") if allowed_hosts_str != "*" else ["*"]
 
 # Port configuration (Railway assigns PORT dynamically)
 PORT = os.getenv("PORT", "")
@@ -218,7 +221,10 @@ SIMPLE_JWT = {
 # =============================================================================
 # CORS SETTINGS
 # =============================================================================
-CORS_ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS", "").split(",") if os.getenv("CORS_ALLOWED_ORIGINS") else []
+# 환경변수에서 CORS 오리진 가져오기 (기본값: studyverse.store 도메인)
+default_cors_origins = "https://studyverse.store,https://www.studyverse.store"
+cors_origins_str = os.getenv("CORS_ALLOWED_ORIGINS", default_cors_origins)
+CORS_ALLOWED_ORIGINS = [origin.strip() for origin in cors_origins_str.split(",") if origin.strip()]
 
 CORS_ALLOW_CREDENTIALS = True
 

@@ -18,8 +18,9 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS (configure from env, default to *)
-allow_origins = os.getenv("CORS_ALLOW_ORIGINS", "*")
+# CORS (configure from env, default to studyverse.store + localhost for development)
+default_cors = "https://studyverse.store,https://www.studyverse.store,http://localhost:3000,http://127.0.0.1:3000"
+allow_origins = os.getenv("CORS_ALLOW_ORIGINS", default_cors)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[o.strip() for o in allow_origins.split(",") if o.strip()] if allow_origins != "*" else ["*"],

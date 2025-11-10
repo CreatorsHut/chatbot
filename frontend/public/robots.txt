@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /*.json$
+Disallow: /admin/
+
+Sitemap: https://studyverse.store/sitemap.xml
